@@ -183,7 +183,7 @@ static ssize_t device_read( struct file* file,
   struct private_data* private_data = (struct private_data*)file->private_data;
   struct channel_list* current_channel = private_data->current_channel;
   char* message;
-  int i;
+  int i, write_index, size;
 
   if (current_channel == NULL || current_channel->next == NULL) {
     printk("Invalid device_read(%p,%p,%ld)\n",
@@ -191,8 +191,8 @@ static ssize_t device_read( struct file* file,
     return -EINVAL;
   }
 
-  int write_index = current_channel->write_index;
-  int size = current_channel->size[write_index];
+  write_index = current_channel->write_index;
+  size = current_channel->size[write_index];
 
   if (size == 0) {
     printk("Invalid device_read(%p,%p,%ld)\n",
