@@ -13,7 +13,7 @@
 
 #define DEVICE_RANGE_NAME "message_slot"
 #define BUF_LEN 128
-#define DEVICE_FILE_NAME "message_slot"
+#define DEVICE_FILE_NAME "message_slot_"
 #define SUCCESS 0
 
 #endif
