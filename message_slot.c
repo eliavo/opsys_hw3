@@ -194,6 +194,7 @@ static ssize_t device_read( struct file* file,
   write_index = current_channel->write_index;
   size = current_channel->size[write_index];
   printk("slotptr: %p\n", private_data->current_slot);
+  printk("slot list head: %p\n", slot_list_head);
   printk("write index: %d\n, size: %d\n", write_index, size);
   printk("size[0]: %d\n, size[1]: %d\n", current_channel->size[0], current_channel->size[1]);
 
@@ -243,6 +244,7 @@ static ssize_t device_write( struct file*       file,
   }
 
   printk("slotptr: %p\n", private_data->current_slot);
+  printk("slot list head: %p\n", slot_list_head);
   write_index = 1 - current_channel->write_index;
   printk("previous write index: %d\n, current write index: %d\n", current_channel->write_index, write_index);
   current_channel->size[write_index] = length;
