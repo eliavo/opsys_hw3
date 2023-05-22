@@ -186,7 +186,7 @@ static ssize_t device_read( struct file* file,
   int i, write_index, size;
 
   if (current_channel == NULL || current_channel->next == NULL) {
-    printk("Invalid device_read(%p,%p,%ld)\n",
+    printk("Invalid device_read and failed on current_channel(%p,%p,%ld)\n",
            file, buffer, length);
     return -EINVAL;
   }
@@ -195,12 +195,12 @@ static ssize_t device_read( struct file* file,
   size = current_channel->size[write_index];
 
   if (size == 0) {
-    printk("Invalid device_read(%p,%p,%ld)\n",
+    printk("Invalid device_read and failed on size(%p,%p,%ld)\n",
            file, buffer, length);
     return -EINVAL;
   }
   if (length == 0 || length < size || length > BUF_LEN) {
-    printk("Invalid length for device_read(%p,%p,%ld)\n",
+    printk("Invalid length for device_read and failed on length (user)(%p,%p,%ld)\n",
            file, buffer, length);
     return -EMSGSIZE;
   }
