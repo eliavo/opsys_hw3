@@ -14,6 +14,7 @@
 #include <linux/kdev_t.h>
 #include <linux/uaccess.h>  /* for get_user and put_user */
 #include <linux/string.h>   /* for memset. NOTE - not string.h!*/
+#include <linux/slab.h>     /* for kmalloc */
 #include <linux/ioctl.h>
 
 MODULE_LICENSE("GPL");
@@ -65,10 +66,10 @@ struct slot_list* assign_slot(int minor_number) {
   current_slot->minor_number = minor_number;
   current_slot->num_open = 0;
 
-  current_slot->channel_list = (struct channel_list*)kmalloc(sizeof(struct channel_list), GFP_KERNEL);
-  current_slot->channel_list->next = NULL;
+  current_slot->channel = (struct channel_list*)kmalloc(sizeof(struct channel_list), GFP_KERNEL);
+  current_slot->channel->next = NULL;
 
-  currecnt_slot->next = (struct slot_list*)kmalloc(sizeof(struct slot_list), GFP_KERNEL);
+  current_slot->next = (struct slot_list*)kmalloc(sizeof(struct slot_list), GFP_KERNEL);
   current_slot->next->next = NULL;
 
   return current_slot;
@@ -78,8 +79,11 @@ void free_slot(struct slot_list* slot) {
   /*
   This function frees the slot list that corresponds to the given slot.
   */
-  struct channel_list* current_channel = slot->channel_list;
+  struct channel_list* current_channel = slot->channel;
   struct channel_list* next_channel;
+
+  struct slot_list* current_slot = slot_list_head;
+  struct slot_list* next_slot;
 
   while (current_channel != NULL) {
     next_channel = current_channel->next;
@@ -88,9 +92,6 @@ void free_slot(struct slot_list* slot) {
   }
   
   // now we need to remove the slot from the slot list and fix the pointers
-
-  struct slot_list* current_slot = slot_list_head;
-  struct slot_list* next_slot;
 
   if (slot == slot_list_head) {
     slot_list_head = current_slot->next;
@@ -116,7 +117,7 @@ struct channel_list* assign_channel(unsigned long channel_id, struct slot_list* 
   If the channel does not exist, it creates a new one and returns it.
   For simplicity, the end of the channel list is a malloced channel with a NULL next pointer
   */
-  struct channel_list* current_channel = current_slot->channel_list;
+  struct channel_list* current_channel = current_slot->channel;
 
   while (current_channel->next != NULL) {
     current_channel = current_channel->next;
@@ -146,7 +147,7 @@ static int device_open( struct inode* inode,
   struct slot_list* current_slot = assign_slot(minor_number);
   current_slot->num_open++;
 
-  private_data->current_slot = *current_slot;
+  private_data->current_slot = current_slot;
   private_data->channel_id = 0;
   private_data->current_channel = NULL;
 
@@ -181,9 +182,10 @@ static ssize_t device_read( struct file* file,
 {
   struct private_data* private_data = (struct private_data*)file->private_data;
   struct channel_list* current_channel = private_data->current_channel;
+  char* message;
 
   if (current_channel == NULL || current_channel->next == NULL) {
-    printk("Invalid device_read(%p,%p,%d)\n",
+    printk("Invalid device_read(%p,%p,%ld)\n",
            file, buffer, length);
     return -EINVAL;
   }
@@ -192,17 +194,17 @@ static ssize_t device_read( struct file* file,
   int size = current_channel->size[write_index];
 
   if (size == 0) {
-    printk("Invalid device_read(%p,%p,%d)\n",
+    printk("Invalid device_read(%p,%p,%ld)\n",
            file, buffer, length);
     return -EINVAL;
   }
   if (length == 0 || length < size || length > BUF_LEN) {
-    printk("Invalid length for device_read(%p,%p,%d)\n",
+    printk("Invalid length for device_read(%p,%p,%ld)\n",
            file, buffer, length);
     return -EMSGSIZE;
   }
 
-  char* message = current_channel->message[write_index];
+  message = current_channel->message[write_index];
 
   for (i = 0; i < length && i < size; ++i) {
     put_user(message[i], &buffer[i]);
@@ -221,28 +223,32 @@ static ssize_t device_write( struct file*       file,
 {
   struct private_data* private_data = (struct private_data*)file->private_data;
   struct channel_list* current_channel = private_data->current_channel;
+  int write_index;
+  char* message;
 
   if (current_channel == NULL || current_channel->next == NULL) {
-    printk("Invalid device_write(%p,%s,%d)\n",
+    printk("Invalid device_write(%p,%s,%ld)\n",
            file, buffer, length);
     return -EINVAL;
   }
 
   if (length == 0 || length > BUF_LEN) {
-    printk("Invalid length for device_write(%p,%s,%d)\n",
+    printk("Invalid length for device_write(%p,%s,%ld)\n",
            file, buffer, length);
     return -EMSGSIZE;
   }
 
-  int write_index = 1 - current_channel->write_index;
+  write_index = 1 - current_channel->write_index;
   current_channel->size[write_index] = length;
-  char* message = current_channel->message[write_index];
+  message = current_channel->message[write_index];
 
-  for( i = 0; i < length && i < BUF_LEN; ++i ) {
+  for(int i = 0; i < length && i < BUF_LEN; ++i) {
     get_user(message[i], &buffer[i]);
   }
 
   current_channel->write_index = write_index; // atomic write operation
+
+  return length;
 }
 
 //----------------------------------------------------------------
@@ -252,7 +258,7 @@ static long device_ioctl( struct   file* file,
 {
   struct private_data* private_data = (struct private_data*)file->private_data;
 
-  if (ioctl_command_id != IOCTL_SET_ENC || ioctl_param == 0) {
+  if (ioctl_command_id != IOCTL_MSG_SLOT_CHANNEL || ioctl_param == 0) {
     printk("Invalid device_ioctl(%p,%u,%ld)\n",
            file, ioctl_command_id, ioctl_param);
     return -EINVAL;
