@@ -185,9 +185,7 @@ static ssize_t device_read( struct file* file,
   char* message;
   int i, write_index, size;
 
-  printk("Channel id: %ld\n", private_data->channel_id);
-
-  if (current_channel == NULL || current_channel->next == NULL || current_channel->channel_id == 0) {
+  if (current_channel == NULL || current_channel->next == NULL) {
     printk("Invalid device_read and failed on current_channel(%p,%p,%ld)\n",
            file, buffer, length);
     return -EINVAL;
@@ -195,6 +193,7 @@ static ssize_t device_read( struct file* file,
 
   write_index = current_channel->write_index;
   size = current_channel->size[write_index];
+  printk("write index: %d\n, size: %d\n", write_index, size);
 
   if (size == 0) {
     printk("Invalid device_read and failed on size(%p,%p,%ld)\n",
@@ -229,9 +228,7 @@ static ssize_t device_write( struct file*       file,
   int write_index, i;
   char* message;
 
-  printk("Channel id: %ld\n", private_data->channel_id);
-
-  if (current_channel == NULL || current_channel->next == NULL || current_channel->channel_id == 0) {
+  if (current_channel == NULL || current_channel->next == NULL) {
     printk("Invalid device_write(%p,%s,%ld)\n",
            file, buffer, length);
     return -EINVAL;
@@ -244,7 +241,11 @@ static ssize_t device_write( struct file*       file,
   }
 
   write_index = 1 - current_channel->write_index;
+  printk("previous write index: %d\n, current write index: %d\n", current_channel->write_index, write_index);
   current_channel->size[write_index] = length;
+
+  printk("putting size %d in index %d\n", length, write_index);
+
   message = current_channel->message[write_index];
 
   for(i = 0; i < length && i < BUF_LEN; ++i) {
