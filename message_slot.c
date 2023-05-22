@@ -183,6 +183,7 @@ static ssize_t device_read( struct file* file,
   struct private_data* private_data = (struct private_data*)file->private_data;
   struct channel_list* current_channel = private_data->current_channel;
   char* message;
+  int i;
 
   if (current_channel == NULL || current_channel->next == NULL) {
     printk("Invalid device_read(%p,%p,%ld)\n",
@@ -223,7 +224,7 @@ static ssize_t device_write( struct file*       file,
 {
   struct private_data* private_data = (struct private_data*)file->private_data;
   struct channel_list* current_channel = private_data->current_channel;
-  int write_index;
+  int write_index, i;
   char* message;
 
   if (current_channel == NULL || current_channel->next == NULL) {
@@ -242,7 +243,7 @@ static ssize_t device_write( struct file*       file,
   current_channel->size[write_index] = length;
   message = current_channel->message[write_index];
 
-  for(int i = 0; i < length && i < BUF_LEN; ++i) {
+  for(i = 0; i < length && i < BUF_LEN; ++i) {
     get_user(message[i], &buffer[i]);
   }
 
