@@ -194,6 +194,7 @@ static ssize_t device_read( struct file* file,
   write_index = current_channel->write_index;
   size = current_channel->size[write_index];
   printk("write index: %d\n, size: %d\n", write_index, size);
+  printk("size[0]: %d\n, size[1]: %d\n", current_channel->size[0], current_channel->size[1]);
 
   if (size == 0) {
     printk("Invalid device_read and failed on size(%p,%p,%ld)\n",
