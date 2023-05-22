@@ -38,7 +38,7 @@ struct slot_list {
   struct slot_list* next;
 };
 
-static struct slot_list* slot_list_head;
+static struct slot_list* slot_list_head = (struct slot_list*)kmalloc(sizeof(struct slot_list), GFP_KERNEL);
 
 struct private_data {
   int channel_id;
@@ -310,7 +310,7 @@ static int __init simple_init(void)
     return rc;
   }
 
-  slot_list_head = (struct slot_list*)kmalloc(sizeof(struct slot_list), GFP_KERNEL);
+  // slot_list_head = (struct slot_list*)kmalloc(sizeof(struct slot_list), GFP_KERNEL);
   if (slot_list_head == NULL) {
     printk( KERN_ALERT "Failed to allocate memory for slot list\n");
     return -ENOMEM;
