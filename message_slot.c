@@ -185,7 +185,7 @@ static ssize_t device_read( struct file* file,
   char* message;
   int i, write_index, size;
 
-  if (current_channel == NULL || current_channel->next == NULL) {
+  if (current_channel == NULL || current_channel->next == NULL || current_channel->channel_id != private_data->channel_id) {
     printk("Invalid device_read and failed on current_channel(%p,%p,%ld)\n",
            file, buffer, length);
     return -EINVAL;
@@ -227,7 +227,7 @@ static ssize_t device_write( struct file*       file,
   int write_index, i;
   char* message;
 
-  if (current_channel == NULL || current_channel->next == NULL) {
+  if (current_channel == NULL || current_channel->next == NULL || current_channel->channel_id != private_data->channel_id) {
     printk("Invalid device_write(%p,%s,%ld)\n",
            file, buffer, length);
     return -EINVAL;
