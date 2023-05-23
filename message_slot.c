@@ -185,7 +185,7 @@ static ssize_t device_read( struct file* file,
   write_index = current_channel->write_index;
   size = current_channel->size[write_index];
 
-  printk("Read\n")
+  printk("Read\n");
   printk("slotptr: %p with minor number: %d\n", private_data->current_slot, private_data->current_slot->minor_number);
   printk("channelptr: %p with channel id: %lu\n", current_channel, current_channel->channel_id);
   printk("slot list head: %p with minor number: %d\n", slot_list_head, slot_list_head->minor_number);
