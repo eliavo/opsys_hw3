@@ -33,7 +33,6 @@ struct channel_list {
 
 struct slot_list {
   unsigned long minor_number;
-  unsigned int num_open;
   struct channel_list* channel;
   struct slot_list* next;
 };
@@ -64,7 +63,6 @@ struct slot_list* assign_slot(int minor_number) {
   }
 
   current_slot->minor_number = minor_number;
-  current_slot->num_open = 0;
 
   current_slot->channel = (struct channel_list*)kmalloc(sizeof(struct channel_list), GFP_KERNEL);
   current_slot->channel->next = NULL;
@@ -145,7 +143,6 @@ static int device_open( struct inode* inode,
   int minor_number = iminor(inode);
   struct private_data* private_data = (struct private_data*)kmalloc(sizeof(struct private_data), GFP_KERNEL);
   struct slot_list* current_slot = assign_slot(minor_number);
-  current_slot->num_open++;
 
   private_data->current_slot = current_slot;
   private_data->channel_id = 0;
@@ -160,13 +157,6 @@ static int device_release( struct inode* inode,
                            struct file*  file)
 {
   struct private_data* private_data = (struct private_data*)file->private_data;
-  unsigned int num_open = private_data->current_slot->num_open;
-
-  if (num_open == 1) {
-    free_slot(private_data->current_slot);
-  } else {
-    private_data->current_slot->num_open--;
-  }
 
   kfree(private_data);
   return SUCCESS;
