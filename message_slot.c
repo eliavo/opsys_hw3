@@ -118,11 +118,11 @@ struct channel_list* assign_channel(unsigned long channel_id, struct slot_list* 
   struct channel_list* current_channel = current_slot->channel;
 
   while (current_channel->next != NULL) {
-    current_channel = current_channel->next;
-
     if (current_channel->channel_id == channel_id) {
       return current_channel;
     }
+
+    current_channel = current_channel->next;
   }
 
   current_channel->channel_id = channel_id;
