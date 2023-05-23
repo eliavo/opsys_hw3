@@ -55,11 +55,10 @@ struct slot_list* assign_slot(int minor_number) {
   struct slot_list* current_slot = slot_list_head;
 
   while (current_slot->next != NULL) {
-    current_slot = current_slot->next;
-
     if (current_slot->minor_number == minor_number) {
       return current_slot;
     }
+    current_slot = current_slot->next;
   }
 
   current_slot->minor_number = minor_number;
