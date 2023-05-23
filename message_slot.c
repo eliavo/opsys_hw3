@@ -58,6 +58,7 @@ struct slot_list* assign_slot(int minor_number) {
     if (current_slot->minor_number == minor_number) {
       return current_slot;
     }
+
     current_slot = current_slot->next;
   }
 
