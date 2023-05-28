@@ -16,7 +16,7 @@
 #include <linux/string.h>   /* for memset. NOTE - not string.h!*/
 #include <linux/slab.h>     /* for kmalloc */
 #include <linux/ioctl.h>
-#include <linux/errno.h>
+#include <errno.h>
 
 MODULE_LICENSE("GPL");
 
