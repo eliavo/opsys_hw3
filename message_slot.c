@@ -247,6 +247,7 @@ static ssize_t device_write( struct file*       file,
            file, buffer, length);
     return -EMSGSIZE;
   }
+  return -EINVAL;
 
   write_index = 1 - current_channel->write_index;
   current_channel->size[write_index] = length;
