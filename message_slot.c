@@ -197,6 +197,7 @@ static ssize_t device_read( struct file* file,
            file, buffer, length);
     return -EINVAL;
   }
+
   if (length == 0 || length < size || length > BUF_LEN) {
     printk("Invalid length for device_read and failed on length (user)(%p,%p,%ld)\n",
            file, buffer, length);
@@ -249,8 +250,15 @@ static ssize_t device_write( struct file*       file,
 
   message = current_channel->message[write_index];
 
+  errno = 0;
   for(i = 0; i < length && i < BUF_LEN; ++i) {
     get_user(message[i], &buffer[i]);
+
+    if (errno == EFAULT) {
+      printk("Invalid buffer(%p,%s,%ld)\n",
+             file, buffer, length);
+      return -EINVAL;
+    }
   }
 
   current_channel->write_index = write_index; // atomic write operation
