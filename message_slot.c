@@ -16,7 +16,6 @@
 #include <linux/string.h>   /* for memset. NOTE - not string.h!*/
 #include <linux/slab.h>     /* for kmalloc */
 #include <linux/ioctl.h>
-#include <errno.h>
 
 MODULE_LICENSE("GPL");
 
@@ -251,15 +250,9 @@ static ssize_t device_write( struct file*       file,
 
   message = current_channel->message[write_index];
 
-  errno = 0;
   for(i = 0; i < length && i < BUF_LEN; ++i) {
-    get_user(message[i], &buffer[i]);
-
-    if (errno == EFAULT) {
-      printk("Invalid buffer(%p,%s,%ld)\n",
-             file, buffer, length);
+    if (get_user(message[i], &buffer[i]) != 0)
       return -EINVAL;
-    }
   }
 
   current_channel->write_index = write_index; // atomic write operation
