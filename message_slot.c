@@ -223,6 +223,8 @@ static ssize_t device_write( struct file*       file,
 {
   struct private_data* private_data = (struct private_data*)file->private_data;
   struct channel_list* current_channel = private_data->current_channel;
+  kprint("current channel: %p\n", current_channel);
+  return -EINVAL;
   int write_index, i;
   char* message;
 
