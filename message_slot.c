@@ -143,7 +143,6 @@ static int device_open( struct inode* inode,
   int minor_number = iminor(inode);
   struct private_data* private_data = (struct private_data*)kmalloc(sizeof(struct private_data), GFP_KERNEL);
   struct slot_list* current_slot = assign_slot(minor_number);
-  printk("found slot: %p in open\n", current_slot);
 
   private_data->current_slot = current_slot;
   private_data->channel_id = 0;
@@ -173,15 +172,11 @@ static ssize_t device_read( struct file* file,
 {
   struct private_data* private_data = (struct private_data*)file->private_data;
   struct channel_list* current_channel = private_data->current_channel;
-  char* message;
+  int channel_id = private_data->channel_id;
+  char test_char, *message;
   int i, write_index, size;
 
-  if (current_channel == NULL) {
-    printk("Invalid device_read and failed on current_channel(%p,%p,%ld)\n",
-           file, buffer, length);
-    return -EINVAL;
-  }
-  if (current_channel->next == NULL) {
+  if (channel_id == 0) {
     printk("Invalid device_read and failed on current_channel(%p,%p,%ld)\n",
            file, buffer, length);
     return -EINVAL;
@@ -190,20 +185,18 @@ static ssize_t device_read( struct file* file,
   write_index = current_channel->write_index;
   size = current_channel->size[write_index];
 
-  printk("Read\n");
-  printk("slotptr: %p with minor number: %d\n", private_data->current_slot, private_data->current_slot->minor_number);
-  printk("channelptr: %p with channel id: %lu\n", current_channel, current_channel->channel_id);
-  printk("slot list head: %p with minor number: %d\n", slot_list_head, slot_list_head->minor_number);
-  printk("write index: %d\n, size[0],[1]: %d, %d\n", write_index, current_channel->size[0], current_channel->size[1]);
-  printk("\n");
-
-  if (size == 0) {
+  if (size <= 0) {
     printk("Invalid device_read and failed on size(%p,%p,%ld)\n",
            file, buffer, length);
-    return -EINVAL;
+    return -EWOULDBLOCK;
   }
 
-  if (length == 0 || length < size || length > BUF_LEN) {
+  if (length < size) {
+    printk("Invalid read and failed on length too small\n");
+    return -ENOSPC;
+  }
+
+  if (length > BUF_LEN) {
     printk("Invalid length for device_read and failed on length (user)(%p,%p,%ld)\n",
            file, buffer, length);
     return -EMSGSIZE;
@@ -211,7 +204,12 @@ static ssize_t device_read( struct file* file,
 
   message = current_channel->message[write_index];
 
-  for (i = 0; i < length && i < size; ++i) {
+  for (i=0; i < length; ++i) {
+    if (get_user(test_char, &buffer[i]) != 0)
+      return -1;
+  }
+
+  for (i = 0; i < length; ++i) {
     put_user(message[i], &buffer[i]);
   }
 
@@ -226,42 +224,41 @@ static ssize_t device_write( struct file*       file,
                              size_t             length,
                              loff_t*            offset)
 {
-  struct private_data* private_data = (struct private_data*)file->private_data;
-  struct channel_list* current_channel = private_data->current_channel;
-  int write_index, i;
+  struct channel_list* current_channel;
+  int write_index, i, channel_id;
   char* message;
 
-  if (current_channel == NULL) {
-    printk("Invalid device_write(%p,%s,%ld)\n",
+  struct private_data* private_data = (struct private_data*)file->private_data;
+  if (private_data == NULL) {
+    printk("Invalid device_write in private_data(%p, %p, %ld)\n",
            file, buffer, length);
     return -EINVAL;
   }
-  if (current_channel ->next == NULL) {
-    printk("Invalid device_write(%p,%s,%ld)\n",
+
+  current_channel = private_data->current_channel;
+  channel_id = private_data->channel_id;
+
+  if (channel_id == 0) {
+    printk("Invalid device_write(%p,%p,%ld)\n",
            file, buffer, length);
     return -EINVAL;
   }
 
   if (length == 0 || length > BUF_LEN) {
-    printk("Invalid length for device_write(%p,%s,%ld)\n",
+    printk("Invalid length for device_write(%p,%p,%ld)\n",
            file, buffer, length);
     return -EMSGSIZE;
   }
-  return -EINVAL;
 
   write_index = 1 - current_channel->write_index;
   current_channel->size[write_index] = length;
 
-  printk("Write\n");
-  printk("slotptr: %p with minor number: %d\n", private_data->current_slot, private_data->current_slot->minor_number);
-  printk("channelptr: %p with channel id: %lu\n", current_channel, current_channel->channel_id);
-  printk("slot list head: %p with minor number: %d\n", slot_list_head, slot_list_head->minor_number);
-  printk("new write index: %d\n, size[0],[1]: %d, %d\n", write_index, current_channel->size[0], current_channel->size[1]);
-  printk("\n");
-
   message = current_channel->message[write_index];
 
-  for(i = 0; i < length && i < BUF_LEN; ++i) {
+  for (i=0; i < BUF_LEN; ++i)
+    message[i] = '\0';
+
+  for(i = 0; i < length; ++i) {
     if (get_user(message[i], &buffer[i]) != 0)
       return -EINVAL;
   }
@@ -283,7 +280,7 @@ static long device_ioctl( struct   file* file,
            file, ioctl_command_id, ioctl_param);
     return -EINVAL;
   }
-  
+
   private_data->channel_id = ioctl_param;
   private_data->current_channel = assign_channel(private_data->channel_id, private_data->current_slot);
 

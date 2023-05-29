@@ -16,13 +16,13 @@ int main(int argc, char** argv)
 
   if (argc != 4)
   {
-    perror("Usage: <device_path> <channel> <message>\n");
+    perror("Usage: <device_path> <channel> <message>");
     exit(-1);
   }
 
   file_desc = open( argv[1], O_WRONLY );
   if (file_desc < 0) {
-    perror("Can't open device file\n");
+    perror("Can't open device file");
     exit(-1);
   }
 

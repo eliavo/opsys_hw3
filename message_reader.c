@@ -48,7 +48,7 @@ int main(int argc, char** argv)
 
   close(file_desc);
 
-  printf("%s\n", buf);
+  printf("%s", buf);
 
   return SUCCESS;
 }
