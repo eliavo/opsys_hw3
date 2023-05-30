@@ -65,13 +65,13 @@ struct slot_list* assign_slot(int minor_number) {
   current_slot->minor_number = minor_number;
 
   if ((current_slot->channel = (struct channel_list*)kmalloc(sizeof(struct channel_list), GFP_KERNEL)) == NULL) {
-    printk( KERN_RRR "Failed to allocate memory for channel list\n");
+    printk( KERN_ERR "Failed to allocate memory for channel list\n");
     return (struct slot_list*)NULL;
   }
   current_slot->channel->next = NULL;
 
   if ((current_slot->next = (struct slot_list*)kmalloc(sizeof(struct slot_list), GFP_KERNEL)) == NULL) {
-    printk( KERN_RRR "Failed to allocate memory for slot list\n");
+    printk( KERN_ERR "Failed to allocate memory for slot list\n");
     return (struct slot_list*)NULL;
   }
 
@@ -80,7 +80,7 @@ struct slot_list* assign_slot(int minor_number) {
   return current_slot;
 }
 
-void free_slots() {
+void free_slots(void) {
   /*
   This function frees the slot list that corresponds to the given slot.
   */
@@ -90,19 +90,21 @@ void free_slots() {
   struct slot_list* current_slot = slot_list_head;
   struct slot_list* next_slot;
 
-  while (current_slot != NULL) {
+  while (current_slot->next != NULL) {
     current_channel = current_slot->channel;
 
-    while (current_channel != NULL) {
+    while (current_channel->next != NULL) {
       next_channel = current_channel->next;
       kfree(current_channel);
       current_channel = next_channel;
     }
+    kfree(current_channel);
 
     next_slot = current_slot->next;
     kfree(current_slot);
     current_slot = next_slot;
   }
+  kfree(current_slot);
 }
 
 struct channel_list* assign_channel(unsigned long channel_id, struct slot_list* current_slot) {
@@ -128,7 +130,7 @@ struct channel_list* assign_channel(unsigned long channel_id, struct slot_list* 
   current_channel->size[1] = 0;
 
   if ((current_channel->next = (struct channel_list*)kmalloc(sizeof(struct channel_list), GFP_KERNEL)) == NULL) {
-    printk( KERN_RRR "Failed to allocate memory for channel list\n");
+    printk( KERN_ERR "Failed to allocate memory for channel list\n");
     return (struct channel_list*)NULL;
   } 
 
@@ -143,11 +145,13 @@ static int device_open( struct inode* inode,
 {
   int minor_number = iminor(inode);
   struct private_data* private_data = (struct private_data*)kmalloc(sizeof(struct private_data), GFP_KERNEL);
+  struct slot_list* current_slot;
+
   if (private_data == NULL) {
-    printk( KERN_RRR "Failed to allocate memory for private data\n");
+    printk( KERN_ERR "Failed to allocate memory for private data\n");
     return -1;
   }
-  struct slot_list* current_slot = assign_slot(minor_number);
+  current_slot = assign_slot(minor_number);
 
   if (current_slot == (struct slot_list*)NULL)
     return -1;
@@ -330,7 +334,7 @@ static int __init simple_init(void)
 
   slot_list_head = (struct slot_list*)kmalloc(sizeof(struct slot_list), GFP_KERNEL);
   if (slot_list_head == NULL) {
-    printk( KERN_RRR "Failed to allocate memory for slot list\n");
+    printk( KERN_ERR "Failed to allocate memory for slot list\n");
     return -1;
   }
   slot_list_head->next = NULL;
@@ -341,12 +345,12 @@ static int __init simple_init(void)
 static void __exit simple_cleanup(void)
 {
   // Unregister the device
-  struct slot_list* current_slot = slot_list_head;
-  struct slot_list* next_slot;
 
-  while (current_slot != NULL) {
-    next_slot = current_slot->next;
     free_slots();
+    free_slots();
+    current_slot = next_slot;
+  }
+  free_slots();
     current_slot = next_slot;
   }
 
