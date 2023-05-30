@@ -34,7 +34,7 @@ int main(int argc, char** argv)
     exit(-1);
   }
 
-  if (ioctl( file_desc, IOCTL_MSG_SLOT_CHANNEL, channel_id) < 0)
+  if (ioctl( file_desc, MSG_SLOT_CHANNEL, channel_id) < 0)
   {
     perror("ioctl failed");
     exit(-1);

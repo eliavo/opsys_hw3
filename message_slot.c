@@ -64,47 +64,44 @@ struct slot_list* assign_slot(int minor_number) {
 
   current_slot->minor_number = minor_number;
 
-  current_slot->channel = (struct channel_list*)kmalloc(sizeof(struct channel_list), GFP_KERNEL);
+  if ((current_slot->channel = (struct channel_list*)kmalloc(sizeof(struct channel_list), GFP_KERNEL)) == NULL) {
+    printk( KERN_RRR "Failed to allocate memory for channel list\n");
+    return (struct slot_list*)NULL;
+  }
   current_slot->channel->next = NULL;
 
-  current_slot->next = (struct slot_list*)kmalloc(sizeof(struct slot_list), GFP_KERNEL);
+  if ((current_slot->next = (struct slot_list*)kmalloc(sizeof(struct slot_list), GFP_KERNEL)) == NULL) {
+    printk( KERN_RRR "Failed to allocate memory for slot list\n");
+    return (struct slot_list*)NULL;
+  }
+
   current_slot->next->next = NULL;
 
   return current_slot;
 }
 
-void free_slot(struct slot_list* slot) {
+void free_slots() {
   /*
   This function frees the slot list that corresponds to the given slot.
   */
-  struct channel_list* current_channel = slot->channel;
+  struct channel_list* current_channel;
   struct channel_list* next_channel;
 
   struct slot_list* current_slot = slot_list_head;
   struct slot_list* next_slot;
 
-  while (current_channel != NULL) {
-    next_channel = current_channel->next;
-    kfree(current_channel);
-    current_channel = next_channel;
-  }
-  
-  // now we need to remove the slot from the slot list and fix the pointers
+  while (current_slot != NULL) {
+    current_channel = current_slot->channel;
 
-  if (slot == slot_list_head) {
-    slot_list_head = current_slot->next;
-    kfree(slot);
-    return;
-  }
-
-  while (current_slot->next != NULL) {
-    next_slot = current_slot->next;
-
-    if (next_slot == slot) {
-      current_slot->next = next_slot->next;
-      kfree(slot);
-      return;
+    while (current_channel != NULL) {
+      next_channel = current_channel->next;
+      kfree(current_channel);
+      current_channel = next_channel;
     }
+
+    next_slot = current_slot->next;
+    kfree(current_slot);
+    current_slot = next_slot;
   }
 }
 
@@ -130,7 +127,11 @@ struct channel_list* assign_channel(unsigned long channel_id, struct slot_list* 
   current_channel->size[0] = 0;
   current_channel->size[1] = 0;
 
-  current_channel->next = (struct channel_list*)kmalloc(sizeof(struct channel_list), GFP_KERNEL);
+  if ((current_channel->next = (struct channel_list*)kmalloc(sizeof(struct channel_list), GFP_KERNEL)) == NULL) {
+    printk( KERN_RRR "Failed to allocate memory for channel list\n");
+    return (struct channel_list*)NULL;
+  } 
+
   current_channel->next->next = NULL;
 
   return current_channel;
@@ -142,7 +143,14 @@ static int device_open( struct inode* inode,
 {
   int minor_number = iminor(inode);
   struct private_data* private_data = (struct private_data*)kmalloc(sizeof(struct private_data), GFP_KERNEL);
+  if (private_data == NULL) {
+    printk( KERN_RRR "Failed to allocate memory for private data\n");
+    return -1;
+  }
   struct slot_list* current_slot = assign_slot(minor_number);
+
+  if (current_slot == (struct slot_list*)NULL)
+    return -1;
 
   private_data->current_slot = current_slot;
   private_data->channel_id = 0;
@@ -275,14 +283,18 @@ static long device_ioctl( struct   file* file,
 {
   struct private_data* private_data = (struct private_data*)file->private_data;
 
-  if (ioctl_command_id != IOCTL_MSG_SLOT_CHANNEL || ioctl_param == 0) {
+  if (ioctl_command_id != MSG_SLOT_CHANNEL || ioctl_param == 0) {
     printk("Invalid device_ioctl(%p,%u,%ld)\n",
            file, ioctl_command_id, ioctl_param);
     return -EINVAL;
   }
 
   private_data->channel_id = ioctl_param;
-  private_data->current_channel = assign_channel(private_data->channel_id, private_data->current_slot);
+  if ((private_data->current_channel = assign_channel(private_data->channel_id, private_data->current_slot)) == NULL) {
+    printk("Invalid device_ioctl(%p,%u,%ld)\n",
+           file, ioctl_command_id, ioctl_param);
+    return -1;
+  }
 
   return SUCCESS;
 }
@@ -311,26 +323,17 @@ static int __init simple_init(void)
 
   // Negative values signify an error
   if( rc < 0 ) {
-    printk( KERN_ALERT "%s registraion failed for  %d\n",
+    printk( KERN_ERR "%s registraion failed for  %d\n",
                        DEVICE_FILE_NAME, MAJOR_NUM );
     return rc;
   }
 
   slot_list_head = (struct slot_list*)kmalloc(sizeof(struct slot_list), GFP_KERNEL);
   if (slot_list_head == NULL) {
-    printk( KERN_ALERT "Failed to allocate memory for slot list\n");
-    return -ENOMEM;
+    printk( KERN_RRR "Failed to allocate memory for slot list\n");
+    return -1;
   }
   slot_list_head->next = NULL;
-
-  printk( "Registeration is successful. ");
-  printk( "If you want to talk to the device driver,\n" );
-  printk( "you have to create a device file:\n" );
-  printk( "mknod /dev/%s c %d 0\n", DEVICE_FILE_NAME, MAJOR_NUM );
-  printk( "You can echo/cat to/from the device file.\n" );
-  printk( "Dont forget to rm the device file and "
-          "rmmod when you're done\n" );
-
   return 0;
 }
 
@@ -343,7 +346,7 @@ static void __exit simple_cleanup(void)
 
   while (current_slot != NULL) {
     next_slot = current_slot->next;
-    free_slot(current_slot);
+    free_slots();
     current_slot = next_slot;
   }
 
