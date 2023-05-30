@@ -346,13 +346,7 @@ static void __exit simple_cleanup(void)
 {
   // Unregister the device
 
-    free_slots();
-    free_slots();
-    current_slot = next_slot;
-  }
   free_slots();
-    current_slot = next_slot;
-  }
 
   // Should always succeed
   unregister_chrdev(MAJOR_NUM, DEVICE_RANGE_NAME);
